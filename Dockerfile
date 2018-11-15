@@ -2,20 +2,13 @@ FROM ubuntu:18.04
 
 # Install dependencies
 RUN apt-get -qq update \
-    && apt-get install -y git wget libncurses-dev flex bison gperf \
+    && apt-get install -y sudo git wget libncurses-dev flex bison gperf \
                             python python-pip python-setuptools python-serial \
                             cmake ninja-build ccache \
                             vim picocom microcom
 
 # Clean install KDevelop without some useless stuff from KDE
 RUN apt-get install -y --no-install-recommends kdevelop
-
-# Get SSHd
-RUN apt-get install -y openssh-server
-RUN mkdir /var/run/sshd
-RUN echo 'root:espidfdev' | chpasswd
-RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
 
 # Final cleanup
 RUN apt-get clean \
@@ -50,16 +43,25 @@ RUN cd ${IDF_PATH} \
 # Add the toolchain binaries to PATH
 ENV PATH $ESP_TCHAIN_BASEDIR/xtensa-esp32-elf/bin:$ESP_TCHAIN_BASEDIR/esp32ulp-elf-binutils/bin:$IDF_PATH/tools:$PATH
 
-# This is the directory where our project will show up
-RUN mkdir -p /esp/project
-WORKDIR /esp/project
-
-# Some final tweaks for SSHd
-RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
-
 ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
 
-# Expose port for SSHd and start it
-EXPOSE 22
-CMD ["/usr/sbin/sshd", "-D"]
+# Create a developer account
+RUN export uid=1000 gid=1000 && \
+    mkdir -p /home/developer && \
+    echo "developer:x:${uid}:${gid}:Developer,,,:/home/developer:/bin/bash" >> /etc/passwd && \
+    echo "developer:x:${uid}:" >> /etc/group && \
+    echo "developer ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/developer && \
+    chmod 0440 /etc/sudoers.d/developer && \
+    chown ${uid}:${gid} -R /home/developer && \
+    echo 'developer:espidfdev' | chpasswd 
+
+USER developer
+ENV HOME /home/developer      
+
+# Set the work directory
+RUN mkdir -p ${HOME}/project
+WORKDIR ${HOME}/project
+
+# Here we go!
+ENTRYPOINT [ "/bin/bash" ]
