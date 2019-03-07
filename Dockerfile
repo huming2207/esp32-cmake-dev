@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:18.10
 
 # Install dependencies
 RUN apt-get -qq update \
@@ -6,9 +6,6 @@ RUN apt-get -qq update \
                             python python-pip python-setuptools python-serial \
                             cmake ninja-build ccache \
                             vim picocom microcom
-
-# Clean install KDevelop without some useless stuff from KDE
-RUN apt-get install -y --no-install-recommends kdevelop
 
 # Final cleanup
 RUN apt-get clean \
@@ -36,7 +33,7 @@ ENV IDF_PATH /esp/esp-idf
 RUN mkdir -p $IDF_PATH
 
 # Download ESP-IDF code and binaries
-ENV IDF_BRANCH release/v3.2
+ENV IDF_BRANCH master
 RUN cd ${IDF_PATH} \
     && git clone -b ${IDF_BRANCH} --recursive https://github.com/espressif/esp-idf.git .
 
