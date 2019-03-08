@@ -37,6 +37,15 @@ RUN cd ${IDF_PATH} \
 # Add the toolchain binaries to PATH
 ENV PATH $ESP_TCHAIN_BASEDIR/xtensa-esp32-elf/bin:$ESP_TCHAIN_BASEDIR/esp32ulp-elf-binutils/bin:$IDF_PATH/tools:$PATH
 
+# Install SSH, ref: https://docs.docker.com/engine/examples/running_ssh_service/
+RUN apt-get install -y openssh-server
+RUN mkdir /var/run/sshd
+RUN echo 'root:espidfdev' | chpasswd
+RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# SSH login fix. Otherwise user is kicked off after login
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
 # Final cleanup
 RUN apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -65,4 +74,4 @@ WORKDIR ${HOME}/project
 RUN /usr/bin/python -m pip install --user -r /esp/esp-idf/requirements.txt
 
 # Here we go!
-ENTRYPOINT [ "/bin/bash" ]
+CMD ["/bin/bash"]
